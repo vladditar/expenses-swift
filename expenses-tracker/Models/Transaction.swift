@@ -9,52 +9,37 @@ import Foundation
 import SwiftUI
 import FirebaseFirestore
 
-enum TransactionType: String {
-    case income = "incomes"
-    case expense = "expenses"
-}
-
-protocol Transaction {
-    init?(document: QueryDocumentSnapshot)
-}
-
-struct Income: Transaction, Identifiable {
+struct Transaction: Identifiable {
     let id: String
-    let category: IncomeCategory
+    let category: TransactionCategory
     let amount: Double
     let date: Date
-
-    init?(document: QueryDocumentSnapshot) {
-        guard
-            let category = IncomeCategory(rawValue: document.data()["category"] as? String ?? ""),
-            let amount = document.data()["amount"] as? Double,
-            let timestamp = document.data()["date"] as? Timestamp
-        else {
-            return nil
-        }
-
-        self.id = document.documentID
+    
+    func checkType() -> TransactionType {
+        return category.type
+    }
+    
+    // Manual initializer for creating new transactions
+    init(id: String, category: TransactionCategory, amount: Double, date: Date, type: TransactionType) {
+        self.id = id
         self.category = category
         self.amount = amount
-        self.date = timestamp.dateValue()
+        self.date = date
     }
-}
-
-struct Expense: Transaction, Identifiable {
-    let id: String
-    let category: ExpenseCategory
-    let amount: Double
-    let date: Date
-
+    
+    // Initialize from Firestore Document
     init?(document: QueryDocumentSnapshot) {
+        let data = document.data()
+        
         guard
-            let category = ExpenseCategory(rawValue: document.data()["category"] as? String ?? ""),
-            let amount = document.data()["amount"] as? Double,
-            let timestamp = document.data()["date"] as? Timestamp
+            let categoryRawValue = data[FirestoreKeys.Transaction.category] as? String,
+            let category = TransactionCategory(rawValue: categoryRawValue),
+            let amount = data[FirestoreKeys.Transaction.amount] as? Double,
+            let timestamp = data[FirestoreKeys.Transaction.date] as? Timestamp
         else {
             return nil
         }
-
+        
         self.id = document.documentID
         self.category = category
         self.amount = amount

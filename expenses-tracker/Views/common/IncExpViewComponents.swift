@@ -9,25 +9,33 @@ import Foundation
 import SwiftUI
 import Combine
 
-struct TransactionForm<CategoryType: Hashable & RawRepresentable>: View where CategoryType.RawValue == String {
-    let categories: [CategoryType]
-    let onAddTransaction: (CategoryType, Double) -> Void
+struct TransactionForm: View {
+    let transactionType: TransactionType
+    let onAddTransaction: (TransactionCategory, Double) -> Void
     
-    @State private var selectedCategory: CategoryType
+    @State private var selectedCategory: TransactionCategory
     @State private var amountInput: String = ""
     private let maxCharacters = 10
     
-    init(categories: [CategoryType], onAddTransaction: @escaping (CategoryType, Double) -> Void) {
-        self.categories = categories
+    private var categories: [TransactionCategory] {
+        TransactionCategory.allCases.filter { $0.type == transactionType }
+    }
+    
+    init(transactionType: TransactionType, onAddTransaction: @escaping (TransactionCategory, Double) -> Void) {
+        self.transactionType = transactionType
         self.onAddTransaction = onAddTransaction
-        _selectedCategory = State(initialValue: categories.first!)
+        
+        guard let firstCategory = TransactionCategory.allCases.first(where: { $0.type == transactionType }) else {
+            fatalError("TransactionForm requires at least one category for the selected transaction type")
+        }
+        _selectedCategory = State(initialValue: firstCategory)
     }
     
     var body: some View {
         HStack {
             Picker("Category", selection: $selectedCategory) {
                 ForEach(categories, id: \.self) { category in
-                    Text(category.rawValue.capitalized).tag(category)
+                    Text(category.displayName).tag(category as TransactionCategory)
                 }
             }
             .frame(width: 120)
@@ -51,9 +59,6 @@ struct TransactionForm<CategoryType: Hashable & RawRepresentable>: View where Ca
                     .background(RoundedRectangle(cornerRadius: 8).fill(.green))
             }
         }
-        .padding(20)
-        .background(Color.secondary)
-        .cornerRadius(10)
     }
     
     private func applyCharacterLimit() {
@@ -65,11 +70,11 @@ struct TransactionForm<CategoryType: Hashable & RawRepresentable>: View where Ca
     }
     
     private func handleTransaction() {
-        if let amount = Double(amountInput) {
-            onAddTransaction(selectedCategory, amount)
-            amountInput = ""
-        } else {
-            print("Invalid amount entered")
+        guard let amount = Double(amountInput) else {
+            print("Invalid input or no category selected")
+            return
         }
+        onAddTransaction(selectedCategory, amount)
+        amountInput = ""
     }
 }

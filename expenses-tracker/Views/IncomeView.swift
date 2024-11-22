@@ -11,21 +11,10 @@ struct IncomeView: View {
     @EnvironmentObject var userSessionManager: UserSessionManager
     
     @State private var incomes: [Income] = []
-    private let incomeCategories = IncomeCategory.allCases
-
     private let formatter = NumberFormatter.currencyFormatter
 
     var body: some View {
         VStack {
-            Text("Add income")
-                .font(.title)
-            
-            TransactionForm(categories: incomeCategories) { selectedCategory, amount in
-                addIncome(selectedCategory: selectedCategory, amount: amount)
-            }
-            
-            Divider()
-            
             List {
                 ForEach(incomes) { income in
                     HStack {
@@ -44,16 +33,6 @@ struct IncomeView: View {
         .padding(.top, 50)
         .onAppear {
             fetchIncomes()
-        }
-    }
-    
-    func addIncome(selectedCategory: IncomeCategory, amount: Double) {
-        userSessionManager.addIncome(amount: amount, category: selectedCategory, date: Date()) { success in
-            if success {
-                fetchIncomes()
-            } else {
-                print("Failed to add expense")
-            }
         }
     }
     

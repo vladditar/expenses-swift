@@ -76,8 +76,9 @@ class UserSessionManager: ObservableObject {
 
     private func createUserDocument(user: User) {
         let userDocRef = db.collection("users").document(user.uid)
+        let email = user.email ?? ""
         let userData: [String: Any] = [
-            "name": user.displayName ?? "Anonymous",
+            "name": email.split(separator: "@").first.map(String.init) ?? "Anonymous",
             "preferences": ["theme": "light", "notifications": true]
         ]
         userDocRef.setData(userData, merge: true) { error in
@@ -95,74 +96,74 @@ class UserSessionManager: ObservableObject {
         }
     }
 
-    func addIncome(amount: Double, category: IncomeCategory, date: Date, completion: @escaping (Bool) -> Void) {
-        addTransaction(type: .income, amount: amount, category: category.rawValue, date: date, completion: completion)
-    }
-
-    func addExpense(amount: Double, category: ExpenseCategory, date: Date, completion: @escaping (Bool) -> Void) {
-        addTransaction(type: .expense, amount: amount, category: category.rawValue, date: date, completion: completion)
-    }
-
-    func fetchIncomes(completion: @escaping ([Income]) -> Void) {
-        fetchTransactions(type: .income, completion: completion)
-    }
-
-    func fetchExpenses(completion: @escaping ([Expense]) -> Void) {
-        fetchTransactions(type: .expense, completion: completion)
-    }
-
-    func deleteIncome(incomeID: String, completion: @escaping (Bool) -> Void) {
-        deleteTransaction(type: .income, id: incomeID, completion: completion)
-    }
-
-    func deleteExpense(expenseID: String, completion: @escaping (Bool) -> Void) {
-        deleteTransaction(type: .expense, id: expenseID, completion: completion)
-    }
 
     // MARK: - Common methods
-
-    private func addTransaction(type: TransactionType, amount: Double, category: String, date: Date, completion: @escaping (Bool) -> Void) {
+    func addTransaction(transaction: Transaction, completion: @escaping (Bool) -> Void) {
         guard let userID = Auth.auth().currentUser?.uid else {
             completion(false)
             return
         }
-        
-        let transactionData: [String: Any] = ["category": category, "amount": amount, "date": Timestamp(date: date)]
-        db.collection("users").document(userID).collection(type.rawValue).addDocument(data: transactionData) { error in
-            completion(error == nil)
-        }
+
+        let transactionData: [String: Any] = [
+            FirestoreKeys.Transaction.category: transaction.category.rawValue,
+            FirestoreKeys.Transaction.amount: transaction.amount,
+            FirestoreKeys.Transaction.date: Timestamp(date: transaction.date)
+        ]
+
+        db.collection("users").document(userID)
+            .collection("transactions")
+            .addDocument(data: transactionData) { error in
+                completion(error == nil)
+            }
     }
 
-    private func fetchTransactions<T: Transaction>(type: TransactionType, completion: @escaping ([T]) -> Void) {
+    // Fetching Transactions
+    func fetchTransactions(for type: TransactionType, completion: @escaping ([Transaction]) -> Void) {
         guard let userID = Auth.auth().currentUser?.uid else {
             completion([])
             return
         }
-        
-        db.collection("users").document(userID).collection(type.rawValue)
-            .order(by: "date", descending: true)
+
+        db.collection("users").document(userID)
+            .collection("transactions")
+            .order(by: FirestoreKeys.Transaction.date, descending: true)
             .getDocuments { snapshot, error in
                 guard let documents = snapshot?.documents, error == nil else {
                     completion([])
                     return
                 }
-                
-                let transactions: [T] = documents.compactMap { doc in
-                    guard let transaction = T(document: doc) else { return nil }
-                    return transaction
-                }
-                completion(transactions)
+
+                let transactions: [Transaction] = documents.compactMap { Transaction(document: $0) }
+                let filteredTransactions = transactions.filter { $0.category.type == type }
+                completion(filteredTransactions)
             }
     }
-
-    private func deleteTransaction(type: TransactionType, id: String, completion: @escaping (Bool) -> Void) {
+    
+    // Deleting a Transaction
+    func deleteTransaction(transactionID: String, completion: @escaping (Bool) -> Void) {
         guard let userID = Auth.auth().currentUser?.uid else {
             completion(false)
             return
         }
 
-        db.collection("users").document(userID).collection(type.rawValue).document(id).delete { error in
-            completion(error == nil)
-        }
+        db.collection("users").document(userID)
+            .collection("transactions")
+            .document(transactionID)
+            .delete { error in
+                completion(error == nil)
+            }
+    }
+}
+
+
+struct FirestoreKeys {
+    struct User {
+        static let name = "name"
+        static let preferences = "preferences"
+    }
+    struct Transaction {
+        static let category = "category"
+        static let amount = "amount"
+        static let date = "date"
     }
 }

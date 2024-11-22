@@ -9,46 +9,9 @@ import SwiftUI
 
 struct StatisticsView: View {
     @EnvironmentObject var userSessionManager: UserSessionManager
-    @State private var categoryData: [ChartSliceData] = []
-    @State private var selectedTab = 0
-
-
-    // Unified function to fetch and process data
-    func fetchData(for type: TransactionType) {
-        let fetcher: (@escaping ([Transaction]) -> Void) -> Void = (type == .expense)
-            ? userSessionManager.fetchExpenses
-            : userSessionManager.fetchIncomes
-
-        fetcher { transactions in
-            self.categoryData = mapTransactionsToChartData(transactions)
-        }
-    }
-
-    // Function to map transactions to chart data
-    func mapTransactionsToChartData(_ transactions: [Transaction]) -> [ChartSliceData] {
-        let groupedTransactions = Dictionary(grouping: transactions) { transaction in
-            switch transaction {
-            case let expense as Expense:
-                return expense.category.rawValue
-            case let income as Income:
-                return income.category.rawValue
-            default:
-                return ""
-            }
-        }
-        return groupedTransactions.map { category, items in
-            let totalAmount = items.reduce(0) { total, item in
-                if let expense = item as? Expense {
-                    return total + expense.amount
-                } else if let income = item as? Income {
-                    return total + income.amount
-                }
-                return total
-            }
-            return ChartSliceData(category: category, amount: Int(totalAmount))
-        }
-        .sorted { $0.amount > $1.amount }
-    }
+    @StateObject private var viewModel = StatisticsViewModel(userSessionManager: UserSessionManager())
+    @State private var selectedTransactionType: TransactionType = .EXPENSE
+    @State private var showPopUp: Bool = false
     
     var body: some View {
         VStack {
@@ -60,24 +23,106 @@ struct StatisticsView: View {
                     .foregroundColor(.white)
             }
 
-            Picker("Select Tab", selection: $selectedTab) {
-                Text("Expenses").tag(0)
-                Text("Incomes").tag(1)
+            Picker("Select Tab", selection: $selectedTransactionType) {
+                Text("Expenses").tag(TransactionType.EXPENSE)
+                Text("Incomes").tag(TransactionType.INCOME)
             }
             .pickerStyle(SegmentedPickerStyle())
-            .padding()
+            .padding(.bottom, 40)
 
-            PieChartView(data: categoryData)
+
+            PieChartView(data: viewModel.categoryData)
                 .onAppear {
-                    fetchData(for: selectedTab == 0 ? .expense : .income)
+                    viewModel.fetchData(for: selectedTransactionType)
                 }
-                .onChange(of: selectedTab) { oldValue, newValue in
-                    fetchData(for: newValue == 0 ? .expense : .income)
+                .onChange(of: selectedTransactionType) { oldValue, newValue in
+                    viewModel.fetchData(for: newValue)
                 }
         }
-        .onAppear {
-            fetchData(for: .expense)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(20)
+        .fullScreenCover(isPresented: $showPopUp) {
+            AddTransactionPopUpView(
+                removePopUp: $showPopUp,
+                transactionType: selectedTransactionType,
+                onTransactionAdded: { viewModel.fetchData(for: selectedTransactionType) }
+            )
+            .background(ClearFullCoverBackground())
+            .frame(width: 250, height: 150)
         }
+        .overlay(
+            Button(action: {
+                self.showPopUp.toggle()
+            }) {
+                Image(systemName: "plus.app")
+                    .foregroundColor(.white)
+                    .font(.system(size: 26, weight: .bold))
+                    .frame(width: 50, height: 50)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(.white).opacity(0.2))
+            }
+            .padding(20),
+            alignment: .bottomTrailing
+        )
+    }
+}
+
+struct AddTransactionPopUpView: View {
+    @Binding var removePopUp: Bool
+    var transactionType: TransactionType
+    var onTransactionAdded: () -> Void
+    @EnvironmentObject var userSessionManager: UserSessionManager
+
+    func addTransaction(selectedCategory: TransactionCategory, amount: Double) {
+        let transaction = Transaction(
+            id: UUID().uuidString,
+            category: selectedCategory,
+            amount: amount,
+            date: Date(),
+            type: transactionType
+        )
+
+        userSessionManager.addTransaction(transaction: transaction) { success in
+            if success { onTransactionAdded() }
+        }
+    }
+
+    var body: some View {
+        VStack {
+            TransactionForm(
+                transactionType: transactionType,
+                onAddTransaction: { selectedCategory, amount in
+                    addTransaction(selectedCategory: selectedCategory, amount: amount)
+                    removePopUp.toggle()
+                }
+            )
+
+            Button(action: {
+                removePopUp.toggle()
+            }) {
+                Text("Cancel")
+                    .padding(5)
+                    .background(Color.red)
+                    .foregroundColor(Color.white)
+                    .cornerRadius(10)
+            }
+        }
+        .padding(20)
+        .background(Color.secondary)
+        .cornerRadius(10)
+    }
+}
+
+struct ClearFullCoverBackground: UIViewRepresentable {
+    func makeUIView(context: Context) -> some UIView {
+        let view = UIView()
+        DispatchQueue.main.async {
+            view.superview?.superview?.backgroundColor = .clear
+        }
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIViewType, context: Context) {
+        
     }
 }
 

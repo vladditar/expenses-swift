@@ -9,7 +9,7 @@ import SwiftUI
 import Charts
 
 struct ChartSliceData {
-    var category: String
+    var category: TransactionCategory
     var amount: Int
 }
 
@@ -17,7 +17,7 @@ struct PieChartView: View {
     let data: [ChartSliceData]
     @State private var selectedAngle: Double?
 
-    private var categoryRanges: [(category: String, range: Range<Double>)]
+    private var categoryRanges: [(category: TransactionCategory, range: Range<Double>)]
     private let totalAmount: Int
 
     init(data: [ChartSliceData]) {
@@ -42,9 +42,9 @@ struct PieChartView: View {
 
     private var titleView: some View {
         VStack {
-            Text("\((selectedItem?.amount ?? totalAmount).formatted()) $")
+                Text("\((selectedItem?.amount ?? totalAmount).formatted())€")
                 .font(.title)
-            Text(selectedItem?.category.capitalized ?? "Total")
+            Text(selectedItem?.category.displayName ?? "Total")
                 .font(.callout)
         }
     }
@@ -57,7 +57,7 @@ struct PieChartView: View {
                 angularInset: 2
             )
             .cornerRadius(5)
-            .foregroundStyle(by: .value("Category", item.category.capitalized))
+            .foregroundStyle(by: .value("Category", item.category.displayName))
             .opacity(item.category == selectedItem?.category ? 1 : 0.5)
         }
         .scaledToFit()
@@ -74,10 +74,4 @@ struct PieChartView: View {
         }
         .padding()
     }
-}
-
-#Preview {
-    StatisticsView()
-        .environmentObject(UserSessionManager())
-        .withBackground()
 }

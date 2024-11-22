@@ -19,16 +19,10 @@ struct MainView: View {
                                     Label("Statistics", systemImage: "circle.dashed.inset.filled")
                                 }
             
-                            ExpensesView()
+                            TransactionsView()
                                 .withBackground()
                                 .tabItem {
-                                    Label("Expenses", systemImage: "dollarsign.arrow.circlepath")
-                                }
-                            
-                            IncomeView()
-                                .withBackground()
-                                .tabItem {
-                                    Label("Income", systemImage: "dollarsign.arrow.circlepath")
+                                    Label("Transactions", systemImage: "dollarsign.arrow.circlepath")
                                 }
                         }
                         .onAppear() {
@@ -42,7 +36,7 @@ struct MainView: View {
                 }) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                         .foregroundColor(.white)
-                        .font(.system(size: 16, weight: .bold)) // Adjust the icon size here
+                        .font(.system(size: 16, weight: .bold))
                         .frame(width: 35, height: 35)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
@@ -63,3 +57,80 @@ struct MainView: View {
     MainView()
         .environmentObject(UserSessionManager())
 }
+
+
+
+
+
+
+
+
+
+
+
+
+// Dynamic Type Testing
+
+//let test = Type1(id: "1", categoryEnum: .TWO)
+//TypesView(prop: test)
+//    .withBackground()
+//    .tabItem {
+//        Label("Test", systemImage: "dollarsign.arrow.circlepath")
+//    }
+
+
+//protocol TypeProtocol {
+//    var id: String { get }
+//    var category: String { get }
+//    associatedtype Category: RawRepresentable where Category.RawValue == String
+//    
+//    static func parseTitle(from value: String) -> Category?
+//}
+//
+//struct Type1: TypeProtocol {
+//    let id: String
+//    let categoryEnum: Type1Category
+//    
+//    var category: String {
+//        categoryEnum.rawValue
+//    }
+//    
+//    static func parseTitle(from value: String) -> Type1Category? {
+//        return Type1Category(rawValue: value)
+//    }
+//}
+//
+//struct Type2: TypeProtocol {
+//    let id: String
+//    let categoryEnum: Type2Category
+//    
+//    var category: String {
+//        categoryEnum.rawValue
+//    }
+//    
+//    static func parseTitle(from value: String) -> Type2Category? {
+//        return Type2Category(rawValue: value)
+//    }
+//}
+//
+//
+//enum Type1Category: String {
+//    var id: Self { self }
+//    case ONE = "hello"
+//    case TWO = "world"
+//}
+//
+//enum Type2Category: String {
+//    var id: Self { self }
+//    case ONE = "hi"
+//    case TWO = "people"
+//}
+//
+//
+//struct TypesView: View {
+//    @State var prop: any TypeProtocol
+//    
+//    var body: some View {
+//        Text(prop.category)
+//    }
+//}
